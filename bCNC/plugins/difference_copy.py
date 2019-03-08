@@ -1,9 +1,6 @@
 #!/usr/bin/python
 # -*- coding: ascii -*-
 
-# Author: @harvie Tomas Mudrunka
-# Date: 7 july 2018
-
 from __future__ import print_function
 from __future__ import print_function
 __author__ = ""
@@ -38,7 +35,10 @@ class Tool(Plugin):
 		self.variables = [
 			("name",         "db" ,    "", _("Name")),
 			("ToolSize",     "mm" ,    1, _("Pyrograph tip size")),
-			("Margin",     "float" ,    3.01234, _("Random positive float")),
+			("Margin",     "float" ,    3.01234, _("Random positive float >0")),
+			("In-Out", "In,Out" ,"In", _("In or Out")),
+			("xAdd", "mm" , 1, _("Box X Add")),
+			("yAdd", "mm" , 1, _("Box Y Add")),
 			("File",       "file" ,     "", _("File to process")),
 		]
 		self.buttons.append("exe")
@@ -58,11 +58,33 @@ class Tool(Plugin):
 			app.setStatus(_("Pyrograph abort: Tool Size must be > 0"))
 			return
 
-
 		filename = self["File"]
 
 		#Open gcode file
-		app.load(filename)
+		if not(filename==""):
+			app.load(filename)
+
+
+		inOut= self["In-Out"]
+		xadd= self["xAdd"]
+		yadd= self["yAdd"]
+		if xadd=="":xadd=1
+		if yadd=="":yadd=1
+
+		#Create the external box
+		if inOut=="Out":
+			box=Block("Box")
+			external_box=[]
+			box.append(CNC.grapid(CNC.vars["xmin"]-xadd,CNC.vars["ymin"]-yadd))
+			box.append(CNC.gline(CNC.vars["xmin"]-xadd,CNC.vars["ymax"]+yadd))
+			box.append(CNC.gline(CNC.vars["xmax"]+xadd,CNC.vars["ymax"]+yadd))
+			box.append(CNC.gline(CNC.vars["xmax"]+xadd,CNC.vars["ymin"]-yadd))
+			box.append(CNC.gline(CNC.vars["xmin"]-xadd,CNC.vars["ymin"]-yadd))
+
+			#Insert the external block
+			external_box.append(box)
+			app.gcode.insBlocks(1, external_box, "External_Box")
+			app.refresh()
 
 		#Value for creating an offset from the margins of the gcode
 		margin=self.fromMm("Margin") #GIVING RANDOM DECIMALS SHOULD AVOID COINCIDENT SEGMENTS BETWEEN ISLAND AND BASE PATHS THAT CONFUSE THE ALGORITHM. WORKS IN MOST CASES.
@@ -83,6 +105,7 @@ class Tool(Plugin):
 		#Distance between horizontal lines
 		step_y = toolSize
 		n_steps_y =int(divisions)+1
+
 
 		#Create the snake pattern according to the number of divisions
 		pattern=Block(self.name)
@@ -149,8 +172,8 @@ class Tool(Plugin):
 			matrix[i][0]=x[i]
 			matrix[i][1]=y[i]
 
-		for i in range(len(x)):
-			print('puntos',points[i][0],points[i][1],matrix[i][0], matrix[i][1])
+		# for i in range(len(x)):
+		# 	print('puntos',points[i][0],points[i][1],matrix[i][0], matrix[i][1])
 
 		#print(matrix)
 
@@ -159,8 +182,8 @@ class Tool(Plugin):
 
 		# for i in range(len(x)):
 		# 	print('puntos',points[i][0],points[i][1],matrix[i][0], matrix[i][1])
-
 		#print(matrix)
+
 		index=0
 		pair=0
 		new_matrix=[]
@@ -198,8 +221,6 @@ class Tool(Plugin):
 		# for i in range(len(x)):
 		# 	print('puntos',new_matrix[i][0], new_matrix[i][1])
 
-
-
 		# for i in range(len(x)):
 		# 	print('puntos',new_matrix[i][0], new_matrix[i][1])
 		#print(x, y)
@@ -228,8 +249,14 @@ class Tool(Plugin):
 
 		blocks.append(block)
 		app.gcode.delBlockUndo(1)
-		#app.gcode.setBlockEnableUndo()
-		app.gcode.insBlocks(-1, blocks, "Intersection2")
+		app.gcode.insBlocks(1, blocks, "Intersection2")
+		
+		app.editor.disable()
+
+		for block in blocks:
+			block.enable=1
+
+		#app.editor.enable()
 		#app.editor.unselectAll()
 		app.refresh()
 		app.setStatus(_("Generated Intersection2"))
