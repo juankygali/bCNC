@@ -462,6 +462,20 @@ class TransformGroup(CNCRibbon.ButtonGroup):
 		tkExtra.Balloon.set(b, _("Mirror vertically Y=-Y selected gcode"))
 		self.addWidget(b)
 
+		col, row = 2,0
+		b = Ribbon.LabelRadiobutton(self.frame,
+				image=Utils.icons["axes"],
+				text=_("GCode position"),
+				compound=TOP,
+				anchor=W,
+				variable=app.canvas.actionVar,
+				command=lambda s=app:s.insertCommand("MV_TO_LOCATION",True),
+				background=Ribbon._BACKGROUND)
+		b.grid(row=row, column=col, rowspan=3, padx=0, pady=0, sticky=NSEW)
+		tkExtra.Balloon.set(b, _("Move gcode to pcb location"))
+		self.addWidget(b)
+
+
 #		submenu.add_command(label=_("Rotate command"), underline=0,
 #					command=lambda s=self:s.insertCommand("ROTATE ang x0 y0", False))
 

@@ -115,6 +115,8 @@ class Application(Toplevel,Sender):
 		self.tools = Tools(self.gcode)
 		self.controller = None
 		self.loadConfig()
+		self.offset_x0=0
+		self.offset_y0=0
 
 		# --- Ribbon ---
 		self.ribbon = Ribbon.TabRibbonFrame(self)
@@ -1422,6 +1424,25 @@ class Application(Toplevel,Sender):
 				self.editor.orderUp()
 			elif line[1].upper() == "DOWN":
 				self.editor.orderDown()
+
+		# MOVE AND ROTATE (TO PCB LOCATION)
+		elif rexx.abbrev("MV_TO_LOCATION",cmd,2):
+			despl = 50.0 #DESPLAZAMIENTO DESEADO EN x E y AL QUE TENDREMOS LA PCB SITUADA
+			offset_x1 = CNC.vars["xmin"] #DESFASE ACTUAL EN x DEL GCODE RESPECTO AL ORIGEN. 
+			offset_y1 = CNC.vars["ymin"] #DESFASE ACTUAL EN y DEL GCODE RESPECTO AL ORIGEN. 
+			dx = abs(self.offset_x0+despl-offset_x1) #DIFERENCIA ENTRE EL DESFASE EXISTENTE ANTES DE MOVER EL GCODE Y EL ACTUAL
+			dy = abs(self.offset_y0+despl-offset_y1) #DIFERENCIA ENTRE EL DESFASE EXISTENTE ANTES DE MOVER EL GCODE Y EL ACTUAL
+			if (dx<0.01 and dy<0.01): #EVALUAMOS QUE LA DIFERENCIA SEA MENOR A UN VALOR PRACTICAMENTE 0. NOS HACE SABER SI HEMOS MOVIDO YA EL GCODE PARA NO VOLVERLO A MOVER.
+				tkMessageBox.showinfo(_("GCode orient"), 
+					_("El GCode ya se encuentra posicionado."),
+					parent=self)
+			else: #EN CASO DE QUE LA CONDICION NO SE CUMPLA, SIGNIFICA QUE AUN NO SE HA MOVIDO EL GCODE
+				self.offset_x0 = CNC.vars["xmin"] #SE GUARDA EL VALOR DEL OFFSET INICIAL EN LA VARIABLE GLOBAL
+				self.offset_y0 = CNC.vars["ymin"] #SE GUARDA EL VALOR DEL OFFSET INICIAL EN LA VARIABLE GLOBAL
+				self.editor.selectAll() #SELECCIONA TODO EL GCODE
+				#self.executeOnSelection("OPTIMIZE", True) #OPTIMIZA EL GCODE SELECCIONADO
+				#self.editor.selectAll() # SELECCIONA TODO EL GCODE
+				self.executeOnSelection("MOVE", False, despl, despl, 0) #MUEVE ESQUINA INFERIOR IZQUIERDA A POSICION PCB 
 
 		# MO*VE [|CE*NTER|BL|BR|TL|TR|UP|DOWN|x] [[y [z]]]:
 		# move selected objects either by mouse or by coordinates
